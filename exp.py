@@ -66,7 +66,7 @@ rocket.rotate(angle=-np.radians(rocket_angle), axis=vp.vector(0, 1, 0))
 
 world_model = model.World()
 while True:
-    world_model.ComputeWorld()
+    world_model.ComputeWorld(t)
 
     vp.rate(100)  # Ограничение частоты кадров
 
@@ -87,4 +87,4 @@ while True:
     # Обновляем позицию МКС
     print(world_model.rocket.center_radius.GetX(), world_model.rocket.center_radius.GetY(), world_model.rocket.center_radius.GetZ())
     rocket.pos = vp.vector(world_model.rocket.center_radius.GetX(), world_model.rocket.center_radius.GetY(), world_model.rocket.center_radius.GetZ())
-    rocket.up = vp.vector(world_model.rocket.velocity.GetX() / world_model.rocket.velocity.modulus, world_model.rocket.velocity.GetY() / world_model.rocket.velocity.modulus, world_model.rocket.velocity.GetZ() / world_model.rocket.velocity.modulus)
+    rocket.up = vp.vector(world_model.rocket.velocity.GetX(), world_model.rocket.velocity.GetY(), world_model.rocket.velocity.GetZ())
