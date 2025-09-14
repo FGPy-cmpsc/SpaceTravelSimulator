@@ -23,7 +23,7 @@ earth = vp.sphere(pos=vp.vector(0, 0, 0), radius=model.RADIUS_OF_EARTH, color=vp
                  mass=1000, momentum=vp.vector(0, 0, 0))
 rocket = vp.box(
     pos=vp.vector(0, model.RADIUS_OF_EARTH, 0),
-    size=vp.vector(model.Rocket.rocket_size_dim_x, model.Rocket.rocket_size_dim_y, model.Rocket.rocket_size_dim_z),
+    size=vp.vector(model.Rocket.ROCKET_SIZE_DIM_X, model.Rocket.ROCKET_SIZE_DIM_Y, model.Rocket.ROCKET_SIZE_DIM_Z),
     axis=vp.vector(1, 1, 1),
     radius=0.0001,
     color=vp.color.red,
