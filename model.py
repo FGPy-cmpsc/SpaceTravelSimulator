@@ -39,19 +39,17 @@ class Vector:
     def __rmul__(self, scalar):
         return self.__mul__(scalar)
 
+class ISS:
+    def __init__(self):
+        self.center_radius = Vector(RADIUS_OF_EARTH + ISS_ALTITUDE)
+
 class Rocket:
-    # movement
-    acceleration = Vector()
-
-    #position
-    center_radius = Vector()
-    x_angle = math.pi / 2
-    y_angle = math.pi / 2
-    z_angle = 0
-
+    rocket_size_dim_x = 3
+    rocket_size_dim_y = 30
+    rocket_size_dim_z = 3
     def __init__(self):
         # basic characteristics
-        self.mass = 300_00
+        self.mass = 300_000
         self.mass_fuel_consumption = 880.3
         self.gas_speed_relative_to_the_rocket = 40000
 
@@ -63,6 +61,10 @@ class Rocket:
         self.acceleration = Vector()
 
         self.center_radius = Vector(RADIUS_OF_EARTH)
+
+        x_angle = math.pi / 2
+        y_angle = math.pi / 2
+        z_angle = 0
 
     def ComputeReactiveForce(self):
         pass #TODO
