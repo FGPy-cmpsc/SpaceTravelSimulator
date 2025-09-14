@@ -1,4 +1,5 @@
 import math
+from doctest import master
 
 MASS_OF_EARTH = 5.97e24
 RADIUS_OF_EARTH = 6_378_000
@@ -44,9 +45,10 @@ class ISS:
         self.center_radius = Vector(RADIUS_OF_EARTH + ISS_ALTITUDE)
 
 class Rocket:
-    rocket_size_dim_x = 3
-    rocket_size_dim_y = 30
-    rocket_size_dim_z = 3
+    ROCKET_SIZE_DIM_X = 30
+    ROCKET_SIZE_DIM_Y = 300
+    ROCKET_SIZE_DIM_Z = 30
+    MIN_ROCKET_WEIGHT = 10
     def __init__(self):
         # basic characteristics
         self.mass = 300_000
@@ -67,7 +69,8 @@ class Rocket:
         z_angle = 0
 
     def ComputeReactiveForce(self):
-        pass #TODO
+        if self.mass < self.MIN_ROCKET_WEIGHT:
+            self.reactive_force = Vector()
 
     def ComputeAcceleration(self, external_force):
         self.ComputeReactiveForce()
@@ -94,7 +97,8 @@ class Rocket:
         self.ComputeAcceleration(external_force)
         self.ComputeVelocity()
         self.ComputeCoordinates()
-        self.mass -= self.mass_fuel_consumption * DELTA_TIME
+        if self.mass > self.MIN_ROCKET_WEIGHT:
+            self.mass -= self.mass_fuel_consumption * DELTA_TIME
 
 class World:
     def __init__(self):
