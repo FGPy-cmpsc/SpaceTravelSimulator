@@ -1,5 +1,7 @@
 import math
+import random
 from doctest import master
+from random import randint
 
 MASS_OF_EARTH = 5.97e24
 RADIUS_OF_EARTH = 6_378_000
@@ -7,6 +9,7 @@ ISS_ALTITUDE = 408
 ISS_PERIOD = 92.5  # минут (период обращения МКС)
 SIMULATION_SPEED = 50
 DELTA_TIME = 0.01
+GRAVITATIONAL_CONSTANT = 6.6743 * 10**-11
 
 class Vector:
     def __init__(self, x = 0.0, y = 0.0, z = 0.0):
@@ -44,11 +47,33 @@ class Vector:
         self.y_cord *= modulus / old_modulus
         self.z_cord *= modulus / old_modulus
 
+    def CopyVector(self):
+        return Vector(self.x_cord, self.y_cord, self.z_cord)
+
+    def ScalarProduct(self, vector):
+        return self.x_cord * vector.x_cord + self.y_cord * vector.y_cord + self.z_cord * vector.z_cord
+
     def __mul__(self, scalar):
         return Vector(self.x_cord * scalar, self.y_cord * scalar, self.z_cord * scalar)
 
     def __rmul__(self, scalar):
         return self.__mul__(scalar)
+
+class ExternalForce:
+    def __init__(self):
+        self.ForceVector = Vector()
+
+    def ComputeExternalForce(self, mass_of_rocket, rocket_center_radius):
+        new_force_module = GRAVITATIONAL_CONSTANT * MASS_OF_EARTH * mass_of_rocket / rocket_center_radius.GetModulus()**2
+        #print("f = ", new_force_module)
+
+        self.ForceVector = rocket_center_radius.CopyVector()
+        self.ForceVector.SetModulus(new_force_module)
+        self.ForceVector *= -1
+
+    def GetExternalForceVector(self):
+        return self.ForceVector
+
 
 class ISS:
     def __init__(self):
@@ -58,14 +83,14 @@ class Rocket:
     ROCKET_SIZE_DIM_X = 30
     ROCKET_SIZE_DIM_Y = 300
     ROCKET_SIZE_DIM_Z = 30
-    MIN_ROCKET_WEIGHT = 10
+    MIN_ROCKET_WEIGHT = 150
 
-    TARGET = Vector(2 * RADIUS_OF_EARTH, 2 * RADIUS_OF_EARTH, 0)
+
     def __init__(self):
         # basic characteristics
         self.mass = 300_000
-        self.mass_fuel_consumption = 880.3
-        self.gas_speed_relative_to_the_rocket = 40000
+        self.mass_fuel_consumption = 88.3
+        self.gas_speed_relative_to_the_rocket = 400000
 
         # dynamics
         self.reactive_force = Vector(0, self.mass_fuel_consumption * self.gas_speed_relative_to_the_rocket, 0)
@@ -76,13 +101,69 @@ class Rocket:
 
         self.center_radius = Vector(0, RADIUS_OF_EARTH, 0)
 
+        self.target = Vector(0, RADIUS_OF_EARTH + 10000, 0)
+        self.orbital_altitude = self.target.GetModulus() - RADIUS_OF_EARTH
+
+        self.reactive_force_angle = 0
+        self.delta_target_altitude = abs(self.target.GetModulus() - self.center_radius.GetModulus())
+
         x_angle = math.pi / 2
         y_angle = math.pi / 2
         z_angle = 0
 
+    def ComputeTangentialForce(self, external_force):
+        vector_a = self.center_radius.CopyVector()
+        vector_a.AddVector(self.target * -1)
+        vector_b = self.target * -1
+        vector_a_minus_b = self.center_radius.CopyVector()
+        vector_c = vector_a * ((vector_b.ScalarProduct(vector_b) - vector_a.ScalarProduct(vector_b)) / (vector_a_minus_b.GetModulus() ** 2))
+        vector_c.AddVector(vector_b * ((vector_a.ScalarProduct(vector_a) - vector_a.ScalarProduct(vector_b)) / (vector_a_minus_b.GetModulus() ** 2)))
+        self.reactive_force.SetDirection(vector_c * -1)
+        self.reactive_force.AddVector(external_force * -1)
+
+
     def ComputeReactiveForce(self, external_force):
         if self.mass < self.MIN_ROCKET_WEIGHT:
             self.reactive_force = Vector()
+        else:
+            if abs(self.center_radius.GetModulus() - self.target.GetModulus()) < 10:
+                self.ComputeTangentialForce(external_force)
+            else:
+                if self.velocity.GetModulus() < 300:
+                    return
+
+                print(self.delta_target_altitude)
+
+                center_radius_of_trajectory = self.center_radius.CopyVector()
+                delta_radius = Vector(-self.velocity.GetY(), self.velocity.GetX(), self.velocity.GetZ())
+
+                suppose_angle = random.uniform(self.reactive_force_angle - math.pi / 6, self.reactive_force_angle + math.pi / 6)
+                suppose_force = self.reactive_force.CopyVector()
+                suppose_force.SetDirection(Vector(math.sin(suppose_angle), math.cos(suppose_angle), 0))
+                suppose_reactive_force = suppose_force.CopyVector()
+                suppose_force.AddVector(external_force)
+                suppose_force_projection = abs(suppose_force.ScalarProduct(delta_radius)) / delta_radius.GetModulus()
+                suppose_acceleration = suppose_force_projection / self.mass
+
+                delta_radius.SetModulus((self.velocity.GetModulus() ** 2) / suppose_acceleration)
+                center_radius_of_trajectory.AddVector(delta_radius)
+                delta_radius.SetDirection(center_radius_of_trajectory)
+                suppose_position = center_radius_of_trajectory.CopyVector()
+                suppose_position.AddVector(delta_radius)
+                delta_altitude = abs(suppose_position.GetModulus() - self.target.GetModulus())
+
+                if delta_altitude < self.delta_target_altitude:
+                    self.reactive_force = suppose_reactive_force.CopyVector()
+                    self.delta_target_altitude = delta_altitude
+                    self.reactive_force_angle = suppose_angle
+                """else:
+                    p = math.exp((self.delta_target_altitude - delta_altitude) / abs(self.target.GetModulus() - self.center_radius.GetModulus()))
+                    N = 1_000_000
+                    n = randint(1, N)
+                    if n < p * N:
+                        self.reactive_force = suppose_reactive_force.CopyVector()
+                        self.delta_target_altitude = delta_altitude
+                        self.reactive_force_angle = suppose_angle"""
 
 
     def ComputeAcceleration(self, external_force):
@@ -94,9 +175,12 @@ class Rocket:
         self.acceleration.y_cord = total_force.y_cord / self.mass
         self.acceleration.z_cord = total_force.z_cord / self.mass
 
+        #print("a = ", self.acceleration.GetX(), self.acceleration.GetY())
+
     def ComputeVelocity(self):
         delta_velocity = self.acceleration * DELTA_TIME
         self.velocity.AddVector(delta_velocity)
+        #print("v = ", self.velocity.GetX(), self.velocity.GetY())
 
     def ComputeCoordinates(self):
         delta_radius = self.velocity * DELTA_TIME
@@ -109,12 +193,15 @@ class Rocket:
         self.ComputeCoordinates()
         if self.mass > self.MIN_ROCKET_WEIGHT:
             self.mass -= self.mass_fuel_consumption * DELTA_TIME
+        #print("mass = ", self.mass)
 
 class World:
     def __init__(self):
         self.rocket = Rocket()
+        self.external_force = ExternalForce()
 
         self.rocket.center_radius = Vector(0, RADIUS_OF_EARTH, 0)
 
     def ComputeWorld(self, overall_time):
-        self.rocket.ComputeRocket(Vector(), overall_time)
+        self.external_force.ComputeExternalForce(self.rocket.mass, self.rocket.center_radius)
+        self.rocket.ComputeRocket(self.external_force.GetExternalForceVector(), overall_time)
